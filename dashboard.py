@@ -14,19 +14,20 @@ from zipfile import ZipFile
 from lightgbm import LGBMClassifier
 from streamlit_echarts import st_echarts
 import requests
+from sklearn.metrics.pairwise import euclidean_distances
 
 
 # URL de l'API 
-#url_check_id = "http://127.0.0.1:5000/check_id"
-#url_identite_client = "http://127.0.0.1:5000/client_id"
-#url_predict_client = "http://127.0.0.1:5000/predict"
-#url_inf_client = "http://127.0.0.1:5000/inf_client"
+url_check_id = "http://127.0.0.1:5000/check_id"
+url_identite_client = "http://127.0.0.1:5000/client_id"
+url_predict_client = "http://127.0.0.1:5000/predict"
+url_inf_client = "http://127.0.0.1:5000/inf_client"
 
 
-url_check_id = "https://apiopc-fbf4eb881e94.herokuapp.com/check_id" 
-url_identite_client = " https://apiopc-fbf4eb881e94.herokuapp.com/client_id"
-url_predict_client = " https://apiopc-fbf4eb881e94.herokuapp.com/predict"
-url_inf_client = " https://apiopc-fbf4eb881e94.herokuapp.com/inf_client"
+#url_check_id = "https://apiopc-fbf4eb881e94.herokuapp.com/check_id" 
+#url_identite_client = " https://apiopc-fbf4eb881e94.herokuapp.com/client_id"
+#url_predict_client = " https://apiopc-fbf4eb881e94.herokuapp.com/predict"
+#url_inf_client = " https://apiopc-fbf4eb881e94.herokuapp.com/inf_client"
 
 #Configuration application
 # Titre de la page
@@ -239,3 +240,31 @@ if id_client != "":
         sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value", ascending=False).head(5))
         ax.set(title='Importance des informations', xlabel='', ylabel='')
         st.pyplot(fig)
+
+        chk_voisins = st.checkbox("Voir des clients similaires !")
+        #data = data_clean_without_standard
+        if chk_voisins:
+            data = data_origin.copy()
+            st.text("Comparaison de la similarité des clients")
+
+            # Sélection du client de référence            
+            reference_client = data.loc[int(id_client)]
+            
+            # Calculer les distances entre le client de référence et les autres clients
+            numeric_columns = data.select_dtypes(include=['int', 'float','bool']).columns
+            data[numeric_columns] = data[numeric_columns].astype(float)
+            tmp_df = data.sub(data[numeric_columns].loc[id_client], axis='columns')
+            tmp_series = tmp_df.apply(np.square).apply(np.sum, axis=1)
+            data["Distance"] = tmp_series
+
+            # Trier les clients par ordre croissant de distance
+            similar_clients = data.sort_values("Distance")[1:6]  # Sélectionner les 5 clients les plus similaires
+            
+            # Affichage des clients similaires
+            st.write(f"Clients similaires à l'id : {id_client}")
+            st.dataframe(similar_clients)
+            chk_voisins = None
+        else:
+            st.markdown("<i>…</i>", unsafe_allow_html=True)
+        id_client = None
+
